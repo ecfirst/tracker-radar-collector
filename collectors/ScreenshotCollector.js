@@ -1,3 +1,5 @@
+const BaseCollector = require('./BaseCollector');
+
 class ScreenshotCollector extends BaseCollector {
 
     id() {
@@ -32,7 +34,7 @@ class ScreenshotCollector extends BaseCollector {
      * @returns {Promise<Object>}
      */
     async _getFullPageClip() {
-        const { contentSize } = await this._cdpClient.send('Page.getLayoutMetrics');
+        const {contentSize} = await this._cdpClient.send('Page.getLayoutMetrics');
         return {
             x: 0,
             y: 0,
@@ -42,3 +44,4 @@ class ScreenshotCollector extends BaseCollector {
         };
     }
 }
+module.exports = ScreenshotCollector;
