@@ -177,8 +177,12 @@ async function getSiteData(context, url, {
     const initPageTimer = createTimer();
     for (let collector of collectors) {
         try {
-            // eslint-disable-next-line no-await-in-loop
-            await collector.addTarget({url: url.toString(), type: 'page', cdpClient});
+            if (collector.id == 'screenshots') {
+                await collector.addTarget({url: url.toString(), type: 'page', page: page, cdpClient});
+            } else {
+                // eslint-disable-next-line no-await-in-loop
+                await collector.addTarget({url: url.toString(), type: 'page', cdpClient});
+            }
         } catch (e) {
             log(chalk.yellow(`${collector.id()} failed to attach to page`), chalk.gray(e.message), chalk.gray(e.stack));
         }
