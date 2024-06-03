@@ -140,6 +140,9 @@ async function getSiteData(context, url, {
 
         for (let collector of collectors) {
             try {
+                if (collector.id === 'screenshots') {
+                    await collector.addTarget({url: target.url(), type: target.type(), page: context.newPage(), cdpClient});
+                }
                 // eslint-disable-next-line no-await-in-loop
                 await collector.addTarget(simpleTarget);
             } catch (e) {
@@ -177,7 +180,7 @@ async function getSiteData(context, url, {
     const initPageTimer = createTimer();
     for (let collector of collectors) {
         try {
-            if (collector.id == 'screenshots') {
+            if (collector.id === 'screenshots') {
                 await collector.addTarget({url: url.toString(), type: 'page', page: page, cdpClient});
             } else {
                 // eslint-disable-next-line no-await-in-loop
