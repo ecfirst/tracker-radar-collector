@@ -36,6 +36,3 @@ class ScreenshotCollector extends BaseCollector {
 }
 
 module.exports = ScreenshotCollector;
-
-
-module.exports = ScreenshotCollector;
