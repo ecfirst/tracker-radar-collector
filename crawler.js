@@ -1,9 +1,9 @@
-/* eslint-disable max-lines */
 const puppeteer = require('puppeteer');
 const chalk = require('chalk').default;
-const {createTimer} = require('./helpers/timer');
+const { createTimer } = require('./helpers/timer');
 const wait = require('./helpers/wait');
 const tldts = require('tldts');
+const ScreenshotCollector = require('./collectors/ScreenshotCollector');
 
 const DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.58 Safari/537.36';
 const MOBILE_USER_AGENT = 'Mozilla/5.0 (Linux; Android 10; Pixel 2 XL) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.58 Mobile Safari/537.36';
@@ -20,21 +20,11 @@ const MOBILE_VIEWPORT = {
     hasTouch: true
 };
 
-// for debugging: will lunch in window mode instad of headless, open devtools and don't close windows after process finishes
 const VISUAL_DEBUG = false;
 
-/**
- * @param {function(...any):void} log
- * @param {string} proxyHost
- * @param {string} executablePath path to chromium executable to use
- */
 function openBrowser(log, proxyHost, executablePath) {
-    /**
-     * @type {import('puppeteer').BrowserLaunchArgumentOptions}
-     */
     const args = {
         args: [
-            // enable FLoC
             '--enable-blink-features=InterestCohortAPI',
             '--enable-features="FederatedLearningOfCohorts:update_interval/10s/minimum_history_domain_size_required/1,FlocIdSortingLshBasedComputation,InterestCohortFeaturePolicy"',
             '--js-flags="--async-stack-traces --stack-trace-limit 32"'
@@ -48,7 +38,7 @@ function openBrowser(log, proxyHost, executablePath) {
         let url;
         try {
             url = new URL(proxyHost);
-        } catch(e) {
+        } catch (e) {
             log('Invalid proxy URL');
         }
 
@@ -56,20 +46,12 @@ function openBrowser(log, proxyHost, executablePath) {
         args.args.push(`--host-resolver-rules="MAP * ~NOTFOUND , EXCLUDE ${url.hostname}"`);
     }
     if (executablePath) {
-        // @ts-ignore there is no single object that encapsulates properties of both BrowserLaunchArgumentOptions and LaunchOptions that are allowed here
         args.executablePath = executablePath;
     }
 
     return puppeteer.launch(args);
 }
 
-/**
- * @param {puppeteer.BrowserContext} context
- * @param {URL} url
- * @param {{collectors: import('./collectors/BaseCollector')[], log: function(...any):void, urlFilter: function(string, string):boolean, emulateMobile: boolean, emulateUserAgent: boolean, runInEveryFrame: function():void, maxLoadTimeMs: number, extraExecutionTimeMs: number, collectorFlags: Object.<string, string>}} data
- *
- * @returns {Promise<CollectResult>}
- */
 async function getSiteData(context, url, {
     collectors,
     log,
@@ -82,10 +64,6 @@ async function getSiteData(context, url, {
     collectorFlags,
 }) {
     const testStarted = Date.now();
-
-    /**
-     * @type {{cdpClient: import('puppeteer').CDPSession, type: string, url: string}[]}
-     */
     const targets = [];
 
     const collectorOptions = {
@@ -99,7 +77,6 @@ async function getSiteData(context, url, {
         const timer = createTimer();
 
         try {
-            // eslint-disable-next-line no-await-in-loop
             await collector.init(collectorOptions);
             log(`${collector.id()} init took ${timer.getElapsedTime()}s`);
         } catch (e) {
@@ -109,9 +86,7 @@ async function getSiteData(context, url, {
 
     let pageTargetCreated = false;
 
-    // initiate collectors for all contexts (main page, web worker, service worker etc.)
     context.on('targetcreated', async target => {
-        // we have already initiated collectors for the main page, so we ignore the first page target
         if (target.type() === 'page' && !pageTargetCreated) {
             pageTargetCreated = true;
             return;
@@ -119,7 +94,7 @@ async function getSiteData(context, url, {
 
         const timer = createTimer();
         let cdpClient = null;
-        
+
         try {
             cdpClient = await target.createCDPSession();
         } catch (e) {
@@ -127,12 +102,11 @@ async function getSiteData(context, url, {
             return;
         }
 
-        const simpleTarget = {url: target.url(), type: target.type(), cdpClient};
+        const simpleTarget = { url: target.url(), type: target.type(), cdpClient };
         targets.push(simpleTarget);
 
         try {
-            // we have to pause new targets and attach to them as soon as they are created not to miss any data
-            await cdpClient.send('Target.setAutoAttach', {autoAttach: true, waitForDebuggerOnStart: true});
+            await cdpClient.send('Target.setAutoAttach', { autoAttach: true, waitForDebuggerOnStart: true });
         } catch (e) {
             log(chalk.yellow(`Failed to set "${target.url()}" up.`), chalk.gray(e.message), chalk.gray(e.stack));
             return;
@@ -140,15 +114,18 @@ async function getSiteData(context, url, {
 
         for (let collector of collectors) {
             try {
-                // eslint-disable-next-line no-await-in-loop
-                await collector.addTarget(simpleTarget);
+                if (collector instanceof ScreenshotCollector) {
+                    const mpage = await context.newPage();
+                    await collector.addTarget({ ...simpleTarget, page: mpage });
+                } else {
+                    await collector.addTarget(simpleTarget);
+                }
             } catch (e) {
                 log(chalk.yellow(`${collector.id()} failed to attach to "${target.url()}"`), chalk.gray(e.message), chalk.gray(e.stack));
             }
         }
 
         try {
-            // resume target when all collectors are ready
             await cdpClient.send('Runtime.enable');
             await cdpClient.send('Runtime.runIfWaitingForDebugger');
         } catch (e) {
@@ -159,26 +136,23 @@ async function getSiteData(context, url, {
         log(`${target.url()} (${target.type()}) context initiated in ${timer.getElapsedTime()}s`);
     });
 
-    // Create a new page in a pristine context.
     const page = await context.newPage();
 
-    // optional function that should be run on every page (and subframe) in the browser context
     if (runInEveryFrame) {
         page.evaluateOnNewDocument(runInEveryFrame);
     }
 
-    // We are creating CDP connection before page target is created, if we create it only after
-    // new target is created we will miss some requests, API calls, etc.
     const cdpClient = await page.target().createCDPSession();
-
-    // without this, we will miss the initial request for the web worker or service worker file
-    await cdpClient.send('Target.setAutoAttach', {autoAttach: true, waitForDebuggerOnStart: true});
+    await cdpClient.send('Target.setAutoAttach', { autoAttach: true, waitForDebuggerOnStart: true });
 
     const initPageTimer = createTimer();
     for (let collector of collectors) {
         try {
-            // eslint-disable-next-line no-await-in-loop
-            await collector.addTarget({url: url.toString(), type: 'page', cdpClient});
+            if (collector instanceof ScreenshotCollector) {
+                await collector.addTarget({ url: url.toString(), type: 'page', page: page, cdpClient });
+            } else {
+                await collector.addTarget({ url: url.toString(), type: 'page', cdpClient });
+            }
         } catch (e) {
             log(chalk.yellow(`${collector.id()} failed to attach to page`), chalk.gray(e.message), chalk.gray(e.stack));
         }
@@ -191,23 +165,19 @@ async function getSiteData(context, url, {
 
     await page.setViewport(emulateMobile ? MOBILE_VIEWPORT : DEFAULT_VIEWPORT);
 
-    // if any prompts open on page load, they'll make the page hang unless closed
     page.on('dialog', dialog => dialog.dismiss());
-
-    // catch and report crash errors
     page.on('error', e => log(chalk.red(e.message)));
 
     let timeout = false;
 
     try {
-        await page.goto(url.toString(), {timeout: maxLoadTimeMs, waitUntil: 'networkidle0'});
+        await page.goto(url.toString(), { timeout: maxLoadTimeMs, waitUntil: 'networkidle0' });
     } catch (e) {
         if (e instanceof puppeteer.errors.TimeoutError || (e.name && e.name === 'TimeoutError')) {
             log(chalk.yellow('Navigation timeout exceeded.'));
 
             for (let target of targets) {
                 if (target.type === 'page') {
-                    // eslint-disable-next-line no-await-in-loop
                     await target.cdpClient.send('Page.stopLoading');
                 }
             }
@@ -220,7 +190,6 @@ async function getSiteData(context, url, {
     for (let collector of collectors) {
         const postLoadTimer = createTimer();
         try {
-            // eslint-disable-next-line no-await-in-loop
             await collector.postLoad();
             log(`${collector.id()} postLoad took ${postLoadTimer.getElapsedTime()}s`);
         } catch (e) {
@@ -228,19 +197,14 @@ async function getSiteData(context, url, {
         }
     }
 
-    // give website a bit more time for things to settle
     await page.waitForTimeout(extraExecutionTimeMs);
 
     const finalUrl = page.url();
-    /**
-     * @type {Object<string, Object>}
-     */
     const data = {};
 
     for (let collector of collectors) {
         const getDataTimer = createTimer();
         try {
-            // eslint-disable-next-line no-await-in-loop
             const collectorData = await collector.getData({
                 finalUrl,
                 urlFilter: urlFilter && urlFilter.bind(null, finalUrl)
@@ -255,7 +219,6 @@ async function getSiteData(context, url, {
 
     for (let target of targets) {
         try {
-            // eslint-disable-next-line no-await-in-loop
             await target.cdpClient.detach();
         } catch (e) {
             // we don't care that much because in most cases an error here means that target already detached
@@ -276,26 +239,15 @@ async function getSiteData(context, url, {
     };
 }
 
-/**
- * @param {string} documentUrl
- * @param {string} requestUrl
- * @returns {boolean}
- */
 function isThirdPartyRequest(documentUrl, requestUrl) {
     const mainPageDomain = tldts.getDomain(documentUrl);
 
     return tldts.getDomain(requestUrl) !== mainPageDomain;
 }
 
-/**
- * @param {URL} url
- * @param {{collectors?: import('./collectors/BaseCollector')[], log?: function(...any):void, filterOutFirstParty?: boolean, emulateMobile?: boolean, emulateUserAgent?: boolean, proxyHost?: string, browserContext?: puppeteer.BrowserContext, runInEveryFrame?: function():void, executablePath?: string, maxLoadTimeMs?: number, extraExecutionTimeMs?: number, collectorFlags?: Object.<string, string>}} options
- * @returns {Promise<CollectResult>}
- */
 module.exports = async (url, options) => {
     const log = options.log || (() => {});
     const browser = options.browserContext ? null : await openBrowser(log, options.proxyHost, options.executablePath);
-    // Create a new incognito browser context.
     const context = options.browserContext || await browser.createIncognitoBrowserContext();
 
     let data = null;
@@ -309,7 +261,7 @@ module.exports = async (url, options) => {
             collectors: options.collectors || [],
             log,
             urlFilter: options.filterOutFirstParty === true ? isThirdPartyRequest.bind(null) : null,
-            emulateUserAgent: options.emulateUserAgent !== false, // true by default
+            emulateUserAgent: options.emulateUserAgent !== false,
             emulateMobile: options.emulateMobile,
             runInEveryFrame: options.runInEveryFrame,
             maxLoadTimeMs,
@@ -320,7 +272,6 @@ module.exports = async (url, options) => {
         log(chalk.red('Crawl failed'), e.message, chalk.gray(e.stack));
         throw e;
     } finally {
-        // only close the browser if it was created here and not debugging
         if (browser && !VISUAL_DEBUG) {
             await browser.close();
         }

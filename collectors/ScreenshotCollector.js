@@ -7,11 +7,14 @@ class ScreenshotCollector extends BaseCollector {
     }
 
     /**
-     * @param {{cdpClient: import('puppeteer').CDPSession, url: string, type: import('./TargetCollector').TargetType}} targetInfo 
+     * @param {{cdpClient: import('puppeteer').CDPSession, type: import('./TargetCollector').TargetType, page?: import('puppeteer').Page}} targetInfo 
      */
-    addTarget({cdpClient, type}) {
+    addTarget({cdpClient, type, page}) {
         if (type === 'page') {
             this._cdpClient = cdpClient;
+            if (page) {
+                this._page = page; // Store the Puppeteer page instance if provided
+            }
         }
     }
 
@@ -19,29 +22,17 @@ class ScreenshotCollector extends BaseCollector {
      * @returns {Promise<string>}
      */
     async getData() {
-        await this._cdpClient.send('Page.enable');
+        // Ensure the page object is available
+        if (!this._page) {
+            throw new Error("Page instance not available.");
+        }
 
-        // Use the fullPage option to capture the entire content of the page
-        const result = await this._cdpClient.send('Page.captureScreenshot', {
-            format: 'png',
-            clip: await this._getFullPageClip()
-        });
+        // Capture full-page screenshot as PNG
+        const screenshotBuffer = await this._page.screenshot({ fullPage: true, type: 'png' });
 
-        return result.data;
-    }
-
-    /**
-     * @returns {Promise<Object>}
-     */
-    async _getFullPageClip() {
-        const {contentSize} = await this._cdpClient.send('Page.getLayoutMetrics');
-        return {
-            x: 0,
-            y: 0,
-            width: contentSize.width,
-            height: contentSize.height,
-            scale: 1
-        };
+        // Convert buffer to base64
+        return screenshotBuffer.toString('base64');
     }
 }
+
 module.exports = ScreenshotCollector;
