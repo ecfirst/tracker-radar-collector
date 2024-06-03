@@ -7,12 +7,14 @@ class ScreenshotCollector extends BaseCollector {
     }
 
     /**
-     * @param {{cdpClient: import('puppeteer').CDPSession, url: string, type: import('./TargetCollector').TargetType}} targetInfo 
+     * @param {{cdpClient: import('puppeteer').CDPSession, type: import('./TargetCollector').TargetType, page?: import('puppeteer').Page}} targetInfo 
      */
     addTarget({cdpClient, type, page}) {
         if (type === 'page') {
             this._cdpClient = cdpClient;
-            this._page = page; // Store the Puppeteer page instance
+            if (page) {
+                this._page = page; // Store the Puppeteer page instance if provided
+            }
         }
     }
 
@@ -32,5 +34,8 @@ class ScreenshotCollector extends BaseCollector {
         return screenshotBuffer.toString('base64');
     }
 }
+
+module.exports = ScreenshotCollector;
+
 
 module.exports = ScreenshotCollector;

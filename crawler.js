@@ -141,7 +141,8 @@ async function getSiteData(context, url, {
         for (let collector of collectors) {
             try {
                 if (collector.id === 'screenshots') {
-                    await collector.addTarget({url: target.url(), type: target.type(), page: context.newPage(), cdpClient});
+                    const mpage = await context.newPage();
+                    await collector.addTarget({...simpleTarget, page: mpage});
                 }
                 // eslint-disable-next-line no-await-in-loop
                 await collector.addTarget(simpleTarget);
