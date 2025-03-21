@@ -38,7 +38,7 @@ function openBrowser(log, proxyHost, executablePath) {
         let url;
         try {
             url = new URL(proxyHost);
-        } catch (e) {
+        } catch {
             log('Invalid proxy URL');
         }
 
@@ -220,7 +220,7 @@ async function getSiteData(context, url, {
     for (let target of targets) {
         try {
             await target.cdpClient.detach();
-        } catch (e) {
+        } catch {
             // we don't care that much because in most cases an error here means that target already detached
         }
     }

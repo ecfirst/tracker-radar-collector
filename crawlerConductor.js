@@ -7,7 +7,7 @@ const URL = require('url').URL;
 const {createTimer} = require('./helpers/timer');
 const createDeferred = require('./helpers/deferred');
 const downloadCustomChromium = require('./helpers/downloadCustomChromium');
-// eslint-disable-next-line no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const BaseCollector = require('./collectors/BaseCollector');
 const notABot = require('./helpers/notABot');
 
@@ -35,6 +35,7 @@ async function crawlAndSaveData(urlString, dataCollectors, log, filterOutFirstPa
      */
     const prefixedLog = (...msg) => log(chalk.gray(`${url.hostname}:`), ...msg);
 
+    // @ts-expect-error - outdated node types
     const data = await crawl(url, {
         log: prefixedLog,
         // @ts-ignore
