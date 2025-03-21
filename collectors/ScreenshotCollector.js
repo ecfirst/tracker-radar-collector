@@ -28,7 +28,7 @@ class ScreenshotCollector extends BaseCollector {
         }
 
         // Capture full-page screenshot as PNG
-        const screenshotBuffer = await this._page.screenshot({ fullPage: true, type: 'png' });
+        const screenshotBuffer = await this._page.screenshot({fullPage: true, type: 'png'});
 
         // Convert buffer to base64
         return screenshotBuffer.toString('base64');

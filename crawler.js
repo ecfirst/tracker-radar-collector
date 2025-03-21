@@ -1,6 +1,6 @@
 const puppeteer = require('puppeteer');
 const chalk = require('chalk').default;
-const { createTimer } = require('./helpers/timer');
+const {createTimer} = require('./helpers/timer');
 const wait = require('./helpers/wait');
 const tldts = require('tldts');
 const ScreenshotCollector = require('./collectors/ScreenshotCollector');
@@ -102,11 +102,11 @@ async function getSiteData(context, url, {
             return;
         }
 
-        const simpleTarget = { url: target.url(), type: target.type(), cdpClient };
+        const simpleTarget = {url: target.url(), type: target.type(), cdpClient};
         targets.push(simpleTarget);
 
         try {
-            await cdpClient.send('Target.setAutoAttach', { autoAttach: true, waitForDebuggerOnStart: true });
+            await cdpClient.send('Target.setAutoAttach', {autoAttach: true, waitForDebuggerOnStart: true});
         } catch (e) {
             log(chalk.yellow(`Failed to set "${target.url()}" up.`), chalk.gray(e.message), chalk.gray(e.stack));
             return;
@@ -116,7 +116,7 @@ async function getSiteData(context, url, {
             try {
                 if (collector instanceof ScreenshotCollector) {
                     const mpage = await context.newPage();
-                    await collector.addTarget({ ...simpleTarget, page: mpage });
+                    await collector.addTarget({...simpleTarget, page: mpage});
                 } else {
                     await collector.addTarget(simpleTarget);
                 }
@@ -143,15 +143,15 @@ async function getSiteData(context, url, {
     }
 
     const cdpClient = await page.target().createCDPSession();
-    await cdpClient.send('Target.setAutoAttach', { autoAttach: true, waitForDebuggerOnStart: true });
+    await cdpClient.send('Target.setAutoAttach', {autoAttach: true, waitForDebuggerOnStart: true});
 
     const initPageTimer = createTimer();
     for (let collector of collectors) {
         try {
             if (collector instanceof ScreenshotCollector) {
-                await collector.addTarget({ url: url.toString(), type: 'page', page: page, cdpClient });
+                await collector.addTarget({url: url.toString(), type: 'page', page, cdpClient});
             } else {
-                await collector.addTarget({ url: url.toString(), type: 'page', cdpClient });
+                await collector.addTarget({url: url.toString(), type: 'page', cdpClient});
             }
         } catch (e) {
             log(chalk.yellow(`${collector.id()} failed to attach to page`), chalk.gray(e.message), chalk.gray(e.stack));
@@ -171,7 +171,7 @@ async function getSiteData(context, url, {
     let timeout = false;
 
     try {
-        await page.goto(url.toString(), { timeout: maxLoadTimeMs, waitUntil: 'networkidle0' });
+        await page.goto(url.toString(), {timeout: maxLoadTimeMs, waitUntil: 'networkidle0'});
     } catch (e) {
         if (e instanceof puppeteer.errors.TimeoutError || (e.name && e.name === 'TimeoutError')) {
             log(chalk.yellow('Navigation timeout exceeded.'));
