@@ -6,6 +6,7 @@ const chalk = require('chalk').default;
 const ProgressBar = require('progress');
 const tldts = require('tldts');
 const METADATA_FILE_NAME = 'metadata.json';
+const METADATA_FILE_PATTERN = /^metadata(_\d+)?\.json$/
 
 program
     .option('-i, --input <path>', 'path to folder with data')
@@ -24,7 +25,7 @@ const dataFiles = fs.readdirSync(dataDir)
         const resolvedPath = path.resolve(process.cwd(), `${dataDir}/${file}`);
         const stat = fs.statSync(resolvedPath);
 
-        return stat && stat.isFile() && file.endsWith('.json') && file !== METADATA_FILE_NAME;
+        return stat && stat.isFile() && file.endsWith('.json') && !METADATA_FILE_PATTERN.test(file);
     });
 
 const progressBar = new ProgressBar('[:bar] :percent ETA :etas :file', {
