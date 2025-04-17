@@ -61,7 +61,7 @@ module.exports = async options => {
     const log = options.logFunction || (() => {});
     const failureCallback = options.failureCallback || (() => {});
 
-    let numberOfCrawlers = options.numberOfCrawlers || Math.floor(cores * 1.0);
+    let numberOfCrawlers = options.numberOfCrawlers || Math.floor(cores * 0.8);
     numberOfCrawlers = Math.min(MAX_NUMBER_OF_CRAWLERS, numberOfCrawlers, options.urls.length);
 
     // Increase number of listeners so we have at least one listener for each async process
