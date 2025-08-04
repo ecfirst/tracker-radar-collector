@@ -38,8 +38,7 @@ program
  * @param {string} fileType file extension, defaults to 'json'
  */
 function createOutputPath(outputPath, url, fileType = 'json') {
-    const urlStr = url instanceof URL ? url.toString() : url;
-    return path.join(outputPath, `${createUniqueUrlName(urlStr)}.${fileType}`);
+    return path.join(outputPath, `${createUniqueUrlName(url)}.${fileType}`);
 }
 
 /**
@@ -159,7 +158,7 @@ async function run({
 
         // move screenshot to its own file and only keep screenshot path in the JSON data
         if (data.data.screenshots) {
-            const screenshotFilename = createOutputPath(outputPath, url, 'png');
+            const screenshotFilename = createOutputPath(outputPath, url, 'jpg');
             fs.writeFileSync(screenshotFilename, Buffer.from(data.data.screenshots, 'base64'));
 
             data.data.screenshots = screenshotFilename;
