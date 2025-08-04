@@ -158,7 +158,7 @@ async function run({
 
         // move screenshot to its own file and only keep screenshot path in the JSON data
         if (data.data.screenshots) {
-            const screenshotFilename = createOutputPath(url, 'png');
+            const screenshotFilename = createOutputPath(outputPath, url, 'png');
             fs.writeFileSync(screenshotFilename, Buffer.from(data.data.screenshots, 'base64'));
 
             data.data.screenshots = screenshotFilename;
