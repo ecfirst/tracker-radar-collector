@@ -30,8 +30,9 @@ Available options:
 - `-r, --region-code <region>` - optional 2 letter region code. For metadata only
 - `-a, --disable-anti-bot` - disable simple build-in anti bot detection script injected to every frame
 - `--chromium-version <version_number>` - use custom version of Chromium (e.g. "843427") instead of using the default
+- `--selenium-hub <url>` - If provided, browsers will be requested from selenium hub instead of spawning local processes (e.g. `--selenium-hub http://my-selenium-hub-host:4444`).
 - `--config <path>` - path to a config file that allows to set all the above settings (and more). Note that CLI flags have a higher priority than settings passed via config. You can find a sample config file in `tests/cli/sampleConfig.json`.
-- `--autoconsent-action <action>` - automatic autoconsent action (requires the `cmps` collector). Possible values: optIn, optOut
+- `--autoconsent-action <action>` - automatic autoconsent action (requires the `cookiepopups` collector). Possible values: optIn, optOut
 
 ### Use it as a module
 
@@ -81,7 +82,7 @@ const data = await crawler(new URL('https://example.com'), {
     log: (...msg) => {…},
     urlFilter: (url) => {…},// function that, for each request URL, decides if its data should be stored or not
     emulateMobile: false,
-    emulateUserAgent: false,// don't use the default puppeteer UA (default true)
+    emulateUserAgent: true, // force UA emulation (default false)
     proxyHost: 'socks5://myproxy:8080',
     browserContext: context,// if you prefer to create the browser context yourself (to e.g. use other browser or non-incognito context) you can pass it here (by default crawler will create an incognito context using standard chromium for you)
     runInEveryFrame: () => {window.alert('injected')},// function that should be executed in every frame (main + all subframes)
@@ -96,7 +97,7 @@ const data = await crawler(new URL('https://example.com'), {
 ## Output format
 
 Each successfully crawled website will create a separate file named after the website (when using the CLI tool). Output data format is specified in `crawler.js` (see `CollectResult` type definition).
-Additionally, for each crawl `metadata.json` file will be created containing crawl configuration, system configuration and some high-level stats. 
+Additionally, for each crawl `metadata.json` file will be created containing crawl configuration, system configuration and some high-level stats.
 
 ## Data post-processing
 
@@ -120,7 +121,7 @@ Each collector needs to extend the `BaseCollector` and has to override following
 Additionally, each collector can override following methods:
 
 - `init(options)` which is called before the crawl begins
-- `addTarget(targetInfo)` which is called whenever new target is created (main page, iframe, web worker etc.)
+- `addTarget(session, targetInfo)` which is called whenever new target is attached (main page, iframe, web worker etc.). Session is a Puppeteer CDPSession to the target.
 - `postLoad()` which is called after the page has loaded. This is the place for executing heavy page interactions (`extraExecutionTimeMs` is applied after this hook).
 
 There are couple of built-in collectors in the `collectors/` folder. `CookieCollector` is the simplest one and can be used as a template.

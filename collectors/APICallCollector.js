@@ -11,7 +11,7 @@ class APICallCollector extends BaseCollector {
     /**
      * @param {import('./BaseCollector').CollectorInitOptions} options
      */
-    init({log}) {
+    init({log, collectorFlags}) {
         /**
          * @type {Map<string, Map<string, number>>}
          */
@@ -22,23 +22,28 @@ class APICallCollector extends BaseCollector {
         this._calls = [];
         this._incompleteData = false;
         this._log = log;
+        this._collectorFlags = collectorFlags;
     }
 
     /**
-     * @param {{cdpClient: import('puppeteer').CDPSession, url: string, type: import('./TargetCollector').TargetType}} targetInfo 
+     * @param {import('puppeteer-core').CDPSession} session
+     * @param {import('devtools-protocol/types/protocol').Protocol.Target.TargetInfo} targetInfo
      */
-    async addTarget({cdpClient, url}) {
-        const trackerTracker = new TrackerTracker(cdpClient.send.bind(cdpClient));
-        trackerTracker.setMainURL(url.toString());
+    async addTarget(session, targetInfo) {
+        const trackerTracker = new TrackerTracker(session.send.bind(session));
+        trackerTracker.setMainURL(targetInfo.url);
 
-        cdpClient.on('Debugger.scriptParsed', this.onScriptParsed.bind(this, trackerTracker));
-        cdpClient.on('Debugger.paused', this.onDebuggerPaused.bind(this, trackerTracker));
-        cdpClient.on('Runtime.executionContextCreated', this.onExecutionContextCreated.bind(this, trackerTracker, cdpClient));
-        cdpClient.on('Runtime.bindingCalled', this.onBindingCalled.bind(this, trackerTracker));
-        await cdpClient.send('Runtime.addBinding', {name: 'registerAPICall'});
+        session.on('Debugger.scriptParsed', this.onScriptParsed.bind(this, trackerTracker));
+        session.on('Debugger.paused', this.onDebuggerPaused.bind(this, trackerTracker));
+        session.on('Runtime.executionContextCreated', this.onExecutionContextCreated.bind(this, trackerTracker, session));
+        session.on('Runtime.bindingCalled', this.onBindingCalled.bind(this, trackerTracker));
+        await session.send('Runtime.addBinding', {name: 'registerAPICall'});
 
         try {
-            await trackerTracker.init({log: this._log});
+            await trackerTracker.init({
+                log: this._log,
+                enableAsyncStacktraces: this._collectorFlags?.enableAsyncStacktraces
+            });
         } catch(e) {
             this._log('TrackerTracker init failed.');
             throw e;
@@ -47,7 +52,7 @@ class APICallCollector extends BaseCollector {
 
     /**
      * @param {TrackerTracker} trackerTracker
-     * @param {import('puppeteer').CDPSession} cdpClient
+     * @param {import('puppeteer-core').CDPSession} cdpClient
      * @param {import('devtools-protocol/types/protocol').Protocol.Runtime.ExecutionContextCreatedEvent} params
      */
     async onExecutionContextCreated(trackerTracker, cdpClient, params) {
@@ -220,7 +225,7 @@ module.exports = APICallCollector;
  */
 
 /**
- * @typedef { import('./APICalls/TrackerTracker').SavedCall } SavedCall
+ * @import {SavedCall} from './APICalls/TrackerTracker'
  */
 
 /**

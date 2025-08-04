@@ -8,14 +8,20 @@ async function main() {
 
     let apiData;
     try {
-        apiData = await crawler(new URL('https://privacy-test-pages.glitch.me/privacy-protections/fingerprinting/?run'), {
-            collectors: [new APICallCollector()]
+        apiData = await crawler(new URL('https://privacy-test-pages.site/privacy-protections/fingerprinting/'), {
+            collectors: [new APICallCollector()],
+
+            // There's a bug in APICallCollector: it misses calls made before it's fully initialized. This delay is a workaround for it.
+            // see https://app.asana.com/1/137249556945/project/1118485203673454/task/1210055009227658
+            // @ts-expect-error we know that #start is a button
+            // eslint-disable-next-line no-undef
+            runInEveryFrame: () => setTimeout(() => document.querySelector("#start")?.click(), 500),
         });
     } catch (e) {
         assert(false, `Page load failed - ${e}`);
     }
 
-    const apiCalls = apiData.data.apis.callStats['https://privacy-test-pages.glitch.me/privacy-protections/fingerprinting/helpers/tests.js'];
+    const apiCalls = apiData.data.apis.callStats['https://privacy-test-pages.site/privacy-protections/fingerprinting/helpers/tests.js'];
 
     // known fingerprinting breakpoints that are not invoked by our test page
     const knownMissing = [
@@ -77,6 +83,8 @@ async function main() {
         'window.matchMedia("prefers-reduced-motion")',
         'window.matchMedia("color-gamut")',
         'window.matchMedia("pointer")',
+        // window.openDatabase() is removed in recent Chrome versions
+        'window.openDatabase',
     ];
 
     breakpoints.forEach(object => {

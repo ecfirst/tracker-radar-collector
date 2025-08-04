@@ -14,12 +14,14 @@ class TargetCollector extends BaseCollector {
     }
 
     /**
-     * @param {{cdpClient: import('puppeteer').CDPSession, url: string, type: TargetType}} targetInfo 
+     * @param {import('puppeteer-core').CDPSession} session
+     * @param {import('devtools-protocol/types/protocol').Protocol.Target.TargetInfo} targetInfo
      */
-    addTarget({type, url}) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    addTarget(session, targetInfo) {
         this._targets.push({
-            type,
-            url
+            type: targetInfo.type,
+            url: targetInfo.url
         });
     }
 
@@ -36,9 +38,5 @@ module.exports = TargetCollector;
 /**
  * @typedef TargetData
  * @property {string} url
- * @property {TargetType} type
- */
-
-/**
- * @typedef {'page'|'background_page'|'service_worker'|'shared_worker'|'other'|'browser'|'webview'} TargetType
+ * @property {string} type
  */

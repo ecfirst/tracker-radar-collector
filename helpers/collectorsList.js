@@ -2,8 +2,6 @@
  * @fileoverview Helper that provides IDs of all available collectors (based on the main.js file) and helps creating instances of collectors
  */
 const allExports = require('../main');
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const BaseCollector = require('../collectors/BaseCollector');
 const collectorClasses = Object.entries(allExports).filter(([name]) => name.endsWith('Collector')).map(([,collector]) => collector);
 const collectors = collectorClasses.map(CollectorClass => ({
     // @ts-ignore
@@ -19,7 +17,7 @@ function getCollectorIds() {
 }
 
 /**
- * @param {string} id 
+ * @param {string} id
  * @returns {BaseCollector}
  */
 function createCollector(id) {
@@ -41,10 +39,14 @@ module.exports = {
 /**
  * @typedef CollectorData
  * @property {import('../collectors/APICallCollector').APICallReport=} apis
- * @property {import('../collectors/CMPCollector').CMPResult[]=} cmps
+ * @property {import('../collectors/CookiePopupsCollector').CookiePopupsCollectorResult=} cookiepopups
  * @property {import('../collectors/CookieCollector').CookieData[]=} cookies
  * @property {{ present: string[], visible: string[]}=} elements
  * @property {import('../collectors/RequestCollector').RequestData[]=} requests
  * @property {string=} screenshots
  * @property {import('../collectors/TargetCollector').TargetData[]=} targets
+ */
+
+/**
+ * @typedef {import('../collectors/BaseCollector')} BaseCollector
  */

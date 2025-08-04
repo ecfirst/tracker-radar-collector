@@ -1,13 +1,18 @@
 class BaseCollector {
 
+    /**
+     * Override this to increase the total crawl time when this collector is enabled.
+     */
+    collectorExtraTimeMs = 0;
+
     id() {
         return 'base';
     }
 
     /**
      * Called before the crawl begins. Can be async, can throw errors.
-     * 
-     * @param {CollectorInitOptions} options 
+     *
+     * @param {CollectorInitOptions} options
      */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     init(options) {
@@ -15,11 +20,12 @@ class BaseCollector {
 
     /**
      * Called whenever new target becomes available (e.g. main page, iframe, web worker). Can be async, can throw errors.
-     * 
-     * @param {{cdpClient: import('puppeteer').CDPSession, url: string, type: import('./TargetCollector').TargetType}} targetInfo 
+     *
+     * @param {import('puppeteer-core').CDPSession} session
+     * @param {import('devtools-protocol/types/protocol').Protocol.Target.TargetInfo} targetInfo
      */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    addTarget(targetInfo) {
+    addTarget(session, targetInfo) {
     }
 
     /**
@@ -45,10 +51,17 @@ class BaseCollector {
 
 /**
  * @typedef CollectorInitOptions
- * @property {import('puppeteer').BrowserContext} context
+ * @property {import('../browser/LocalChrome').BrowserConnection} browserConnection
  * @property {URL} url
  * @property {function(...any):void} log
- * @property {Object.<string, string>} collectorFlags
+ * @property {CollectorFlags} collectorFlags
+ */
+
+/**
+ * @typedef CollectorFlags
+ * @property {boolean=} enableAsyncStacktraces
+ * @property {import('@duckduckgo/autoconsent/lib/types').AutoAction=} autoconsentAction
+ * @property {boolean=} shortTimeouts  // used to speed up unit tests
  */
 
 module.exports = BaseCollector;
